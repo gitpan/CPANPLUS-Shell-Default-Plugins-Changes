@@ -8,7 +8,7 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 use DirHandle;
 
 use vars qw[$VERSION];
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 ### Regex to match the names of the changes files
 my $changes_re = qr/change(?:s|log)|news/i;
@@ -22,37 +22,31 @@ sub changes {
     my $cmd   = shift;
     my $input = shift || '';
     my $opts  = shift || {};
-    my $verbose = $cb->configure_object->get_conf('verbose');
 
     ### Get the module name and (optionally) the version.
-    my ($mod_name, $version) = split /\s+/, $input;
+    my $mod_name;
+    ($mod_name = $input) =~ /\S+/;
     if (not $mod_name) {
         error( loc("No module supplied") );
         return;
     }
 
-    ### Create a CPANPLUS::Module object from the module name.
-    my $module = $cb->parse_module(module => $mod_name) or do {
-        error(loc("Could not parse module name '%1'"), $mod_name);
-        return;
-    };
-
     ### Fetch module and unpack.
-    my $obj = $cb->parse_module(module => $module->package_name);
+    my $obj = $cb->parse_module(module => $mod_name);
     unless ($obj) {
         error( loc("Couldn't create module object") );
         return;
     }
     $obj->fetch
-        or error( loc("Could not fetch '%1'", $module) ),   return;
+        or error( loc("Could not fetch '%1'", $obj->package) ),   return;
     my $path = $obj->extract
-        or error( loc("Could not extract '%1'", $module) ), return;
+        or error( loc("Could not extract '%1'", $obj->package) ), return;
 
     ### Search for a changes file.
     my $changes_file;
     my $dh = DirHandle->new($path);
     if (defined $dh) {
-        ($changes_file) = grep { -f && m/$changes_re/i }
+        ($changes_file) = grep { -f && m/$changes_re/ }
                      map { File::Spec->catfile($path, $_) } $dh->read;
     }
     undef $dh;
@@ -91,7 +85,7 @@ sub changes_help {
 
 =head1 NAME
 
-CPANPLUS::Shell::Default::Plugins::Changes
+CPANPLUS::Shell::Default::Plugins::Changes - View a module's Changes file from the CPANPLUS shell
 
 =head1 SYNOPSIS
 
